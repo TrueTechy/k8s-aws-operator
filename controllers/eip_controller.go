@@ -100,16 +100,16 @@ func (r *EIPReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 				// assignment was removed
 				status.State = "unassigning"
 				changed = true
-			case *(spec.Assignment) != *(status.Assignment) || addr.AssociationId == nil:
+			case spec.Assignment.PodName != status.Assignment.PodName || spec.Assignment.ENI != status.Assignment.ENI || addr.AssociationId == nil:
 				// assignment was changed (in spec or in EC2)
 				status.State = "reassigning"
 				changed = true
 			case status.Assignment.PodName != "":
-				privateIP, podUID, err := r.getPodInfo(ctx, eip.Namespace, spec.Assignment.PodName)
+				_, podUID, err := r.getPodInfo(ctx, eip.Namespace, spec.Assignment.PodName)
 				if err != nil {
 					return ctrl.Result{}, err
 				}
-				if status.Assignment.PrivateIPAddress != privateIP || status.PodUID != podUID {
+				if status.PodUID != podUID {
 					// pod was replaced
 					// (even if only the pod UID has changed, we can't be sure if the private IP is still attached to the same ENI)
 					status.State = "reassigning"
@@ -374,7 +374,7 @@ func (r *EIPReconciler) assignEIP(ctx context.Context, eip *awsv1alpha1.EIP, log
 
 	eip.Status.State = "assigned"
 	eip.Status.AssociationId = aws.StringValue(resp.AssociationId)
-	eip.Status.Assignment = eip.Spec.Assignment
+	eip.Status.Assignment = eip.Spec.Assignment.DeepCopy()
 	eip.Status.Assignment.PrivateIPAddress = privateIP
 	eip.Status.PodUID = podUID
 	if err := r.Update(ctx, eip); err != nil {

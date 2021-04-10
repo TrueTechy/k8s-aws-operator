@@ -61,10 +61,10 @@ func (r *PodReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	for _, eip := range eips.Items {
-		if eip.Status.Assignment != nil && eip.Status.Assignment.PodName == pod.Name && eip.Status.PodUID == pod.UID {
+		if eip.Status.Assignment != nil && eip.Status.Assignment.PodName == pod.Name && eip.Status.PodUID != pod.UID {
 			// pod UID doesn't match anymore -> pod was replaced; reset podUID and let the EIP controller do the rest
 			eip.Status.PodUID = types.UID("")
-			return ctrl.Result{}, r.Status().Update(ctx, &eip)
+			return ctrl.Result{}, r.Update(ctx, &eip)
 		}
 	}
 
